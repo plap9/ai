@@ -8,22 +8,26 @@ datasource db {
 }
 
 model Workspace {
-  id        String    @id @default(uuid())
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime? // +++ Soft Delete
+  id          String    @id @default(uuid())
+  name        String
+  description String?   @db.Text
+  ownerId     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // +++ Soft Delete
 
-  members       WorkspaceUser[]
+  members       WorkspaceMember[]
   documents     Document[]
   integrations  Integration[]
   conversations Conversation[]
   tasks         Task[]
 
   @@index([name])
+  @@index([ownerId])
 }
 
-model WorkspaceUser {
+model WorkspaceMember {
+  id          String        @id @default(uuid())
   workspaceId String
   userId      String
   role        WorkspaceRole @default(MEMBER)
@@ -32,7 +36,9 @@ model WorkspaceUser {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([workspaceId, userId])
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
 }
 
 model User {
@@ -44,7 +50,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workspaces     WorkspaceUser[]
+  workspaces     WorkspaceMember[]
   messages       Message[]
   notifications  Notification[]
   assignedTasks  Task[]           @relation("AssignedTasks") // +++ Relation for assigned tasks
@@ -70,8 +76,10 @@ model Embedding {
   id         String   @id @default(uuid())
   documentId String
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  
-  vector     Unsupported("vector(1536)")
+
+  // TODO: Enable after installing pgvector extension
+  // vector     Unsupported("vector(1024)")
+  vectorData String?  // Temporary placeholder for vector data
   metadata   Json?
   createdAt  DateTime @default(now())
 }
@@ -98,7 +106,7 @@ model Message {
 
   userId         String
   user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
@@ -143,10 +151,10 @@ model Notification {
 model Integration {
   id        String   @id @default(uuid())
   type      String   // e.g., "google_drive", "slack"
-  
+
   // +++ IMPORTANT: Encrypt this field at the application level before saving
-  config    Json     
-  
+  config    Json
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

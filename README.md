@@ -32,10 +32,12 @@ ai/
 ## 🛠️ Cài đặt
 
 ### Yêu cầu hệ thống
+
 - Node.js >= 18.0.0
 - pnpm >= 8.0.0
 
 ### Cài đặt dependencies
+
 ```bash
 # Cài đặt tất cả dependencies
 pnpm install --frozen-lockfile
@@ -47,6 +49,7 @@ pnpm install --filter api
 ## 🏃‍♂️ Chạy ứng dụng
 
 ### Development
+
 ```bash
 # Chạy API server
 cd apps/api
@@ -57,6 +60,7 @@ pnpm --filter api start:dev
 ```
 
 ### Production
+
 ```bash
 # Build ứng dụng
 pnpm --filter api build
@@ -94,11 +98,13 @@ pnpm --filter api build
 ## 🌐 API Endpoints
 
 ### Base URL
+
 ```
 http://localhost:3000
 ```
 
 ### Endpoints
+
 - `GET /` - Hello World endpoint
 - Thêm các endpoints khác khi phát triển...
 
@@ -142,4 +148,3 @@ NODE_ENV=development
 3. Commit thay đổi (`git commit -m 'Add some AmazingFeature'`)
 4. Push lên branch (`git push origin feature/AmazingFeature`)
 5. Tạo Pull Request
-

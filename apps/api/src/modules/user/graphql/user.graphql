@@ -1,0 +1,30 @@
+enum UserRole {
+  USER
+  ADMIN
+}
+
+type User {
+  id: ID!
+  email: String!
+  name: String
+  role: UserRole!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input UpdateProfileInput {
+  email: String
+  name: String
+  role: UserRole
+}
+
+type Query {
+  me: User!
+  user(id: ID!): User
+}
+
+type Mutation {
+  updateProfile(input: UpdateProfileInput!): User!
+}
+
+scalar DateTime
