@@ -1,11 +1,9 @@
 import {
   Controller,
   Post,
-  Body,
   HttpCode,
   HttpStatus,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,16 +13,35 @@ import {
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
+import { authSchemas } from '../../shared/schemas';
+import {
+  ValidatedBody,
+  CurrentUser,
+  TypeSafeJwtGuard,
+  AuthenticatedUser,
+} from '@ai-assistant/utils';
 
-interface AuthenticatedUser {
-  id: string;
+/**
+ * Interface cho typed request bodies
+ */
+interface RegisterRequest {
   email: string;
+  password: string;
+  name: string;
 }
 
-interface AuthenticatedRequest extends Request {
-  user: AuthenticatedUser;
+interface LoginRequest {
+  email: string;
+  password: string;
 }
 
+interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+/**
+ * Enhanced Auth Controller với type safety
+ */
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
@@ -38,9 +55,17 @@ export class AuthController {
     description: 'User registered successfully',
     type: AuthResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 409, description: 'User already exists' })
-  async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
+  async register(
+    @ValidatedBody(authSchemas.register) body: RegisterRequest,
+  ): Promise<AuthResponseDto> {
+    // Body is now type-safe and validated
+    const registerDto: RegisterDto = {
+      email: body.email,
+      password: body.password,
+      name: body.name,
+    };
     return this.authService.register(registerDto);
   }
 
@@ -53,7 +78,15 @@ export class AuthController {
     type: AuthResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  async login(
+    @ValidatedBody(authSchemas.login) body: LoginRequest,
+  ): Promise<AuthResponseDto> {
+    // Body is now type-safe and validated
+    const loginDto: LoginDto = {
+      email: body.email,
+      password: body.password,
+    };
     return this.authService.login(loginDto);
   }
 
@@ -66,20 +99,23 @@ export class AuthController {
     type: AuthResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Invalid refresh token' })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
   async refreshToken(
-    @Body('refreshToken') refreshToken: string,
+    @ValidatedBody(authSchemas.refreshToken) body: RefreshTokenRequest,
   ): Promise<AuthResponseDto> {
-    return this.authService.refreshToken(refreshToken);
+    // Body is now type-safe and validated
+    return this.authService.refreshToken(body.refreshToken);
   }
 
   @Post('logout')
-  @UseGuards() // JwtAuthGuard will be added later
+  @UseGuards(TypeSafeJwtGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Logout user' })
   @ApiResponse({ status: 204, description: 'User logged out successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async logout(@Request() req: AuthenticatedRequest): Promise<void> {
-    await this.authService.logout(req.user.id);
+  @ApiResponse({ status: 401, description: 'Authentication required' })
+  async logout(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    // User is now type-safe and validated
+    await this.authService.logout(user.id);
   }
 }

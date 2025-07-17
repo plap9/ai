@@ -13,7 +13,15 @@ import {
   GqlAuthGuard,
   RolesGuard,
 } from '../../shared/auth/guards';
+import {
+  TypeSafeJwtGuard,
+  TypeSafeRoleGuard,
+  WorkspacePermissionGuard,
+} from '@ai-assistant/utils';
 
+/**
+ * Enhanced Auth Module với type-safe guards
+ */
 @Module({
   imports: [
     UserModule,
@@ -31,19 +39,33 @@ import {
   providers: [
     AuthService,
     AuthResolver,
+
+    // JWT Strategies
     JwtStrategy,
     JwtRefreshStrategy,
-    JwtAuthGuard,
-    GqlAuthGuard,
-    RolesGuard,
+
+    // Enhanced Guards
+    JwtAuthGuard, // Extended from TypeSafeJwtGuard
+    GqlAuthGuard, // Enhanced with type guards
+    RolesGuard, // Extended from TypeSafeRoleGuard
+
+    // Additional type-safe guards
+    TypeSafeJwtGuard,
+    TypeSafeRoleGuard,
+    WorkspacePermissionGuard,
   ],
   exports: [
     AuthService,
     JwtModule,
     PassportModule,
+
+    // Export enhanced guards
     JwtAuthGuard,
     GqlAuthGuard,
     RolesGuard,
+    TypeSafeJwtGuard,
+    TypeSafeRoleGuard,
+    WorkspacePermissionGuard,
   ],
 })
 export class AuthModule {}

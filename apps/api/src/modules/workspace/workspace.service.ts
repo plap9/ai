@@ -4,6 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { DatabaseService } from '../../shared/database/database.service';
 import { CacheService } from '../../shared/cache/cache.service';
@@ -16,6 +17,29 @@ import {
   WorkspaceMemberResponseDto,
 } from './dto';
 import { WorkspaceRole } from '@prisma/client';
+import { SafeParser, isUUID, isObject, hasProperty } from '@ai-assistant/utils';
+
+/**
+ * Type guard để validate workspace member object
+ */
+function isValidWorkspaceMember(member: unknown): member is {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  role: WorkspaceRole;
+} {
+  return (
+    isObject(member) &&
+    hasProperty(member, 'id') &&
+    hasProperty(member, 'workspaceId') &&
+    hasProperty(member, 'userId') &&
+    hasProperty(member, 'role') &&
+    isUUID(member.id) &&
+    isUUID(member.workspaceId) &&
+    isUUID(member.userId) &&
+    Object.values(WorkspaceRole).includes(member.role as WorkspaceRole)
+  );
+}
 
 @Injectable()
 export class WorkspaceService {
@@ -34,11 +58,24 @@ export class WorkspaceService {
     createWorkspaceDto: CreateWorkspaceDto,
   ): Promise<WorkspaceResponseDto> {
     try {
+      // Type-safe validation của input
+      if (!isUUID(userId)) {
+        throw new BadRequestException('Invalid user ID format');
+      }
+
+      const parser = new SafeParser(createWorkspaceDto);
+      const name = parser.getNonEmptyString('name');
+      const description = parser.getString('description');
+
+      if (!name) {
+        throw new BadRequestException('Workspace name is required');
+      }
+
       // Create workspace
       const workspace = await this.databaseService.workspace.create({
         data: {
-          name: createWorkspaceDto.name,
-          description: createWorkspaceDto.description,
+          name,
+          description: description || null,
           ownerId: userId,
         },
         include: {
@@ -70,18 +107,34 @@ export class WorkspaceService {
         this.CACHE_PREFIX,
         workspace.id,
       );
-      await this.cacheService.set(cacheKey, workspace, this.CACHE_TTL);
+      const formattedWorkspace = this.formatWorkspaceResponse(workspace);
+      await this.cacheService.set(cacheKey, formattedWorkspace, this.CACHE_TTL);
 
       this.logger.log(`Workspace created: ${workspace.name} by user ${userId}`);
-      return this.formatWorkspaceResponse(workspace);
+      return formattedWorkspace;
     } catch (error) {
       this.logger.error(`Error creating workspace:`, error);
-      throw error;
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new BadRequestException(
+        `Failed to create workspace: ${errorMessage}`,
+      );
     }
   }
 
   async findByUser(userId: string): Promise<WorkspaceResponseDto[]> {
     try {
+      // Type-safe validation
+      if (!isUUID(userId)) {
+        throw new BadRequestException('Invalid user ID format');
+      }
+
       const workspaces = await this.databaseService.workspace.findMany({
         where: {
           members: {
@@ -113,12 +166,24 @@ export class WorkspaceService {
       );
     } catch (error) {
       this.logger.error(`Error finding workspaces for user ${userId}:`, error);
-      throw error;
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new BadRequestException(
+        `Failed to find workspaces: ${errorMessage}`,
+      );
     }
   }
 
   async findById(id: string): Promise<WorkspaceResponseDto | null> {
     try {
+      // Type-safe validation
+      if (!isUUID(id)) {
+        throw new BadRequestException('Invalid workspace ID format');
+      }
+
       // Try cache first
       const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
       const cachedWorkspace =
@@ -158,7 +223,14 @@ export class WorkspaceService {
       return formattedWorkspace;
     } catch (error) {
       this.logger.error(`Error finding workspace ${id}:`, error);
-      throw error;
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new BadRequestException(
+        `Failed to find workspace: ${errorMessage}`,
+      );
     }
   }
 
@@ -168,6 +240,28 @@ export class WorkspaceService {
     requesterId: string,
   ): Promise<WorkspaceMemberResponseDto> {
     try {
+      // Type-safe validation của inputs
+      if (!isUUID(workspaceId)) {
+        throw new BadRequestException('Invalid workspace ID format');
+      }
+      if (!isUUID(requesterId)) {
+        throw new BadRequestException('Invalid requester ID format');
+      }
+
+      const parser = new SafeParser(addMemberDto);
+      const email = parser.getEmail('email');
+      const role = parser.getString('role');
+
+      if (!email) {
+        throw new BadRequestException('Valid email is required');
+      }
+      if (
+        !role ||
+        !Object.values(WorkspaceRole).includes(role as WorkspaceRole)
+      ) {
+        throw new BadRequestException('Valid workspace role is required');
+      }
+
       // Check if requester has permission
       await this.checkPermission(workspaceId, requesterId, [
         WorkspaceRole.OWNER,
@@ -175,21 +269,19 @@ export class WorkspaceService {
       ]);
 
       // Find user by email
-      const user = await this.userService.findByEmail(addMemberDto.email);
+      const user = await this.userService.findByEmail(email);
       if (!user) {
         throw new NotFoundException('User not found');
       }
 
-      // Check if user is already a member
-      /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-      const existingMember = await (
-        this.databaseService as any
-      ).workspaceMember.findFirst({
-        where: {
-          workspaceId,
-          userId: user.id,
-        },
-      });
+      // Check if user is already a member using type-safe query
+      const existingMember =
+        await this.databaseService.workspaceMember.findFirst({
+          where: {
+            workspaceId,
+            userId: user.id,
+          },
+        });
 
       if (existingMember) {
         throw new ConflictException(
@@ -197,12 +289,12 @@ export class WorkspaceService {
         );
       }
 
-      // Add member
+      // Add member với proper type validation
       const member = await this.databaseService.workspaceMember.create({
         data: {
           workspaceId,
           userId: user.id,
-          role: addMemberDto.role,
+          role: role as WorkspaceRole,
         },
         include: {
           user: {
@@ -223,7 +315,7 @@ export class WorkspaceService {
       await this.cacheService.del(cacheKey);
 
       this.logger.log(
-        `User ${user.email} added to workspace ${workspaceId} as ${addMemberDto.role}`,
+        `User ${email} added to workspace ${workspaceId} as ${role}`,
       );
 
       return this.formatMemberResponse(member);
@@ -232,7 +324,17 @@ export class WorkspaceService {
         `Error adding member to workspace ${workspaceId}:`,
         error,
       );
-      throw error;
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new BadRequestException(`Failed to add member: ${errorMessage}`);
     }
   }
 
@@ -242,13 +344,24 @@ export class WorkspaceService {
     requesterId: string,
   ): Promise<void> {
     try {
+      // Type-safe validation
+      if (!isUUID(workspaceId)) {
+        throw new BadRequestException('Invalid workspace ID format');
+      }
+      if (!isUUID(memberId)) {
+        throw new BadRequestException('Invalid member ID format');
+      }
+      if (!isUUID(requesterId)) {
+        throw new BadRequestException('Invalid requester ID format');
+      }
+
       // Check if requester has permission
       await this.checkPermission(workspaceId, requesterId, [
         WorkspaceRole.OWNER,
         WorkspaceRole.ADMIN,
       ]);
 
-      // Find member
+      // Find member với type validation
       const member = await this.databaseService.workspaceMember.findFirst({
         where: {
           id: memberId,
@@ -256,7 +369,7 @@ export class WorkspaceService {
         },
       });
 
-      if (!member) {
+      if (!member || !isValidWorkspaceMember(member)) {
         throw new NotFoundException('Member not found');
       }
 
@@ -285,7 +398,16 @@ export class WorkspaceService {
         `Error removing member ${memberId} from workspace ${workspaceId}:`,
         error,
       );
-      throw error;
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new BadRequestException(`Failed to remove member: ${errorMessage}`);
     }
   }
 
@@ -296,6 +418,27 @@ export class WorkspaceService {
     requesterId: string,
   ): Promise<WorkspaceMemberResponseDto> {
     try {
+      // Type-safe validation
+      if (!isUUID(workspaceId)) {
+        throw new BadRequestException('Invalid workspace ID format');
+      }
+      if (!isUUID(memberId)) {
+        throw new BadRequestException('Invalid member ID format');
+      }
+      if (!isUUID(requesterId)) {
+        throw new BadRequestException('Invalid requester ID format');
+      }
+
+      const parser = new SafeParser(updateMemberRoleDto);
+      const role = parser.getString('role');
+
+      if (
+        !role ||
+        !Object.values(WorkspaceRole).includes(role as WorkspaceRole)
+      ) {
+        throw new BadRequestException('Valid workspace role is required');
+      }
+
       // Check if requester has permission
       await this.checkPermission(workspaceId, requesterId, [
         WorkspaceRole.OWNER,
@@ -309,7 +452,7 @@ export class WorkspaceService {
         },
       });
 
-      if (!member) {
+      if (!member || !isValidWorkspaceMember(member)) {
         throw new NotFoundException('Member not found');
       }
 
@@ -321,7 +464,7 @@ export class WorkspaceService {
       // Update member role
       const updatedMember = await this.databaseService.workspaceMember.update({
         where: { id: memberId },
-        data: { role: updateMemberRoleDto.role },
+        data: { role: role as WorkspaceRole },
         include: {
           user: {
             select: {
@@ -341,7 +484,7 @@ export class WorkspaceService {
       await this.cacheService.del(cacheKey);
 
       this.logger.log(
-        `Member ${memberId} role updated to ${updateMemberRoleDto.role} in workspace ${workspaceId}`,
+        `Member ${memberId} role updated to ${role} in workspace ${workspaceId}`,
       );
 
       return this.formatMemberResponse(updatedMember);
@@ -350,12 +493,31 @@ export class WorkspaceService {
         `Error updating member role in workspace ${workspaceId}:`,
         error,
       );
-      throw error;
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new BadRequestException(
+        `Failed to update member role: ${errorMessage}`,
+      );
     }
   }
 
   async switchWorkspace(userId: string, workspaceId: string): Promise<void> {
     try {
+      // Type-safe validation
+      if (!isUUID(userId)) {
+        throw new BadRequestException('Invalid user ID format');
+      }
+      if (!isUUID(workspaceId)) {
+        throw new BadRequestException('Invalid workspace ID format');
+      }
+
       // Check if user is member of the workspace
       const member = await this.databaseService.workspaceMember.findFirst({
         where: {
@@ -364,7 +526,7 @@ export class WorkspaceService {
         },
       });
 
-      if (!member) {
+      if (!member || !isValidWorkspaceMember(member)) {
         throw new ForbiddenException('User is not a member of this workspace');
       }
 
@@ -378,7 +540,17 @@ export class WorkspaceService {
       this.logger.log(`User ${userId} switched to workspace ${workspaceId}`);
     } catch (error) {
       this.logger.error(`Error switching workspace for user ${userId}:`, error);
-      throw error;
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new BadRequestException(
+        `Failed to switch workspace: ${errorMessage}`,
+      );
     }
   }
 
@@ -387,6 +559,14 @@ export class WorkspaceService {
     userId: string,
     allowedRoles: WorkspaceRole[],
   ): Promise<void> {
+    // Type-safe validation
+    if (!isUUID(workspaceId)) {
+      throw new BadRequestException('Invalid workspace ID format');
+    }
+    if (!isUUID(userId)) {
+      throw new BadRequestException('Invalid user ID format');
+    }
+
     const member = await this.databaseService.workspaceMember.findFirst({
       where: {
         workspaceId,
@@ -394,7 +574,7 @@ export class WorkspaceService {
       },
     });
 
-    if (!member) {
+    if (!member || !isValidWorkspaceMember(member)) {
       throw new ForbiddenException('User is not a member of this workspace');
     }
     if (!allowedRoles.includes(member.role)) {

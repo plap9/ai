@@ -3,12 +3,19 @@ import {
   NotFoundException,
   ConflictException,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { DatabaseService } from '../../shared/database/database.service';
 import { CacheService } from '../../shared/cache/cache.service';
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
 import { hash, compare } from 'bcrypt';
-import { User } from '@prisma/client';
+import { User, UserRole } from '@prisma/client';
+import {
+  SafeParser,
+  isUUID,
+  isEmail,
+  isNonEmptyString,
+} from '@ai-assistant/utils';
 
 @Injectable()
 export class UserService {
@@ -23,6 +30,13 @@ export class UserService {
 
   async findById(id: string): Promise<UserResponseDto | null> {
     try {
+      // Type-safe ID validation
+      if (!isUUID(id)) {
+        const invalidId = String(id).substring(0, 20); // Safe string conversion
+        this.logger.warn(`Invalid UUID provided: ${invalidId}`);
+        throw new BadRequestException('Invalid user ID format');
+      }
+
       // Try cache first
       const cacheKey = this.cacheService.generateKey(
         this.CACHE_PREFIX,
@@ -59,12 +73,24 @@ export class UserService {
       return user;
     } catch (error) {
       this.logger.error(`Error finding user by ID ${id}:`, error);
-      throw error;
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to find user: ${errorMessage}`);
     }
   }
 
   async findByEmail(email: string): Promise<User | null> {
     try {
+      // Type-safe email validation
+      if (!isEmail(email)) {
+        const safeEmail = String(email).substring(0, 50); // Safe string conversion
+        this.logger.warn(`Invalid email format provided: ${safeEmail}`);
+        throw new BadRequestException('Invalid email format');
+      }
+
       const user = await this.databaseService.user.findUnique({
         where: { email },
       });
@@ -72,26 +98,50 @@ export class UserService {
       return user;
     } catch (error) {
       this.logger.error(`Error finding user by email ${email}:`, error);
-      throw error;
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to find user by email: ${errorMessage}`);
     }
   }
 
   async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
     try {
+      // Type-safe validation using SafeParser
+      const parser = new SafeParser(createUserDto);
+
+      const email = parser.getEmail('email');
+      const name = parser.getNonEmptyString('name');
+      const password = parser.getNonEmptyString('password');
+
+      if (!email) {
+        throw new BadRequestException('Valid email is required');
+      }
+      if (!name) {
+        throw new BadRequestException('Name is required');
+      }
+      if (!password || password.length < 8) {
+        throw new BadRequestException('Password must be at least 8 characters');
+      }
+
       // Check if user already exists
-      const existingUser = await this.findByEmail(createUserDto.email);
+      const existingUser = await this.findByEmail(email);
       if (existingUser) {
         throw new ConflictException('User with this email already exists');
       }
 
       // Hash password
-      const hashedPassword = await hash(createUserDto.password, 12);
+      const hashedPassword = await hash(password, 12);
 
       // Create user
       const user = await this.databaseService.user.create({
         data: {
-          ...createUserDto,
+          email,
+          name,
           password: hashedPassword,
+          role: (parser.getString('role', 'USER') as UserRole) || UserRole.USER,
         },
         select: {
           id: true,
@@ -115,7 +165,15 @@ export class UserService {
       return user;
     } catch (error) {
       this.logger.error(`Error creating user:`, error);
-      throw error;
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to create user: ${errorMessage}`);
     }
   }
 
@@ -124,24 +182,49 @@ export class UserService {
     updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
     try {
+      // Type-safe ID validation
+      if (!isUUID(id)) {
+        throw new BadRequestException('Invalid user ID format');
+      }
+
       // Check if user exists
       const existingUser = await this.findById(id);
       if (!existingUser) {
         throw new NotFoundException('User not found');
       }
 
-      // Check email conflict if email is being updated
-      if (updateUserDto.email && updateUserDto.email !== existingUser.email) {
-        const userWithEmail = await this.findByEmail(updateUserDto.email);
+      // Type-safe validation using SafeParser
+      const parser = new SafeParser(updateUserDto);
+      const updateData: Partial<UpdateUserDto> = {};
+
+      // Only update provided fields with validation
+      const email = parser.getEmail('email');
+      if (email && email !== existingUser.email) {
+        const userWithEmail = await this.findByEmail(email);
         if (userWithEmail) {
           throw new ConflictException('User with this email already exists');
         }
+        updateData.email = email;
+      }
+
+      const name = parser.getString('name');
+      if (name && isNonEmptyString(name)) {
+        updateData.name = name;
+      }
+
+      const role = parser.getString('role');
+      if (
+        role &&
+        isNonEmptyString(role) &&
+        Object.values(UserRole).includes(role as UserRole)
+      ) {
+        updateData.role = role as UserRole;
       }
 
       // Update user
       const user = await this.databaseService.user.update({
         where: { id },
-        data: updateUserDto,
+        data: updateData,
         select: {
           id: true,
           email: true,
@@ -164,12 +247,26 @@ export class UserService {
       return user;
     } catch (error) {
       this.logger.error(`Error updating user ${id}:`, error);
-      throw error;
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to update user: ${errorMessage}`);
     }
   }
 
   async delete(id: string): Promise<boolean> {
     try {
+      // Type-safe ID validation
+      if (!isUUID(id)) {
+        throw new BadRequestException('Invalid user ID format');
+      }
+
       // Check if user exists
       const existingUser = await this.findById(id);
       if (!existingUser) {
@@ -193,7 +290,15 @@ export class UserService {
       return true;
     } catch (error) {
       this.logger.error(`Error deleting user ${id}:`, error);
-      throw error;
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to delete user: ${errorMessage}`);
     }
   }
 
@@ -202,6 +307,18 @@ export class UserService {
     password: string,
   ): Promise<User | null> {
     try {
+      // Type-safe validation
+      if (!isEmail(email)) {
+        const safeEmail = String(email).substring(0, 50); // Safe string conversion
+        this.logger.warn(`Invalid email format for validation: ${safeEmail}`);
+        return null;
+      }
+
+      if (!isNonEmptyString(password)) {
+        this.logger.warn('Empty password provided for validation');
+        return null;
+      }
+
       const user = await this.findByEmail(email);
       if (!user) {
         return null;
@@ -216,12 +333,23 @@ export class UserService {
       return user;
     } catch (error) {
       this.logger.error(`Error validating password for ${email}:`, error);
-      throw error;
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to validate password: ${errorMessage}`);
     }
   }
 
   async updatePassword(id: string, newPassword: string): Promise<boolean> {
     try {
+      // Type-safe validation
+      if (!isUUID(id)) {
+        throw new BadRequestException('Invalid user ID format');
+      }
+
+      if (!isNonEmptyString(newPassword) || newPassword.length < 8) {
+        throw new BadRequestException('Password must be at least 8 characters');
+      }
+
       const hashedPassword = await hash(newPassword, 12);
 
       await this.databaseService.user.update({
@@ -233,7 +361,12 @@ export class UserService {
       return true;
     } catch (error) {
       this.logger.error(`Error updating password for user ${id}:`, error);
-      throw error;
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to update password: ${errorMessage}`);
     }
   }
 }

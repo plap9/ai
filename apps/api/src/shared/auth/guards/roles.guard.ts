@@ -1,28 +1,17 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { UserRole } from '@prisma/client';
-import { ROLES_KEY } from '../decorators';
-import { isAuthenticatedRequest } from '../types/auth.types';
+import { TypeSafeRoleGuard } from '@ai-assistant/utils';
 
+/**
+ * Enhanced Roles Guard với type safety
+ * Extends TypeSafeRoleGuard từ utils package
+ */
 @Injectable()
-export class RolesGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
-
-  canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
-      ROLES_KEY,
-      [context.getHandler(), context.getClass()],
-    );
-    if (!requiredRoles) {
-      return true;
-    }
-
-    const request: unknown = context.switchToHttp().getRequest();
-
-    if (!isAuthenticatedRequest(request)) {
-      return false;
-    }
-
-    return requiredRoles.includes(request.user.role);
+export class RolesGuard extends TypeSafeRoleGuard {
+  constructor(reflector: Reflector) {
+    super(reflector);
   }
+
+  // TypeSafeRoleGuard đã có implementation đầy đủ
+  // Chỉ cần extend và pass reflector
 }
