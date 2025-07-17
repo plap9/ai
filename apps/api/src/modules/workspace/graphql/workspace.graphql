@@ -1,0 +1,57 @@
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+type WorkspaceMember {
+  id: ID!
+  userId: ID!
+  email: String!
+  name: String
+  role: WorkspaceRole!
+  joinedAt: DateTime!
+}
+
+type Workspace {
+  id: ID!
+  name: String!
+  description: String
+  ownerId: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  members: [WorkspaceMember!]!
+}
+
+input CreateWorkspaceInput {
+  name: String!
+  description: String
+}
+
+input AddMemberInput {
+  email: String!
+  role: WorkspaceRole!
+}
+
+input UpdateMemberRoleInput {
+  role: WorkspaceRole!
+}
+
+type Query {
+  workspace(id: ID!): Workspace
+  myWorkspaces: [Workspace!]!
+}
+
+type Mutation {
+  createWorkspace(input: CreateWorkspaceInput!): Workspace!
+  addMember(workspaceId: ID!, input: AddMemberInput!): WorkspaceMember!
+  removeMember(workspaceId: ID!, memberId: ID!): Boolean!
+  updateMemberRole(
+    workspaceId: ID!
+    memberId: ID!
+    input: UpdateMemberRoleInput!
+  ): WorkspaceMember!
+  switchWorkspace(workspaceId: ID!): Boolean!
+}
+
+scalar DateTime

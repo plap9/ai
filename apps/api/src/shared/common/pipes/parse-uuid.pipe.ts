@@ -4,18 +4,18 @@ import {
   ArgumentMetadata,
   BadRequestException,
 } from '@nestjs/common';
-import { validate as uuidValidate } from 'uuid';
+import { validate as isUUID } from 'uuid';
 
 @Injectable()
-export class ParseUUIDPipe implements PipeTransform<string> {
+export class ParseUUIDPipe implements PipeTransform<string, string> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  transform(value: unknown, metadata: ArgumentMetadata): string {
+  transform(value: string, metadata: ArgumentMetadata): string {
     if (!value || typeof value !== 'string') {
       throw new BadRequestException('UUID is required and must be a string');
     }
 
-    if (!uuidValidate(value)) {
-      throw new BadRequestException('Invalid UUID format');
+    if (!isUUID(value)) {
+      throw new BadRequestException(`Invalid UUID format: ${value}`);
     }
 
     return value;

@@ -7,6 +7,12 @@ import { AuthResolver } from './auth.resolver';
 import { UserModule } from '../user/user.module';
 import { DatabaseModule } from '../../shared/database';
 import { CacheModule } from '../../shared/cache';
+import { JwtStrategy, JwtRefreshStrategy } from '../../shared/auth/strategies';
+import {
+  JwtAuthGuard,
+  GqlAuthGuard,
+  RolesGuard,
+} from '../../shared/auth/guards';
 
 @Module({
   imports: [
@@ -22,7 +28,22 @@ import { CacheModule } from '../../shared/cache';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthResolver],
-  exports: [AuthService, JwtModule, PassportModule],
+  providers: [
+    AuthService,
+    AuthResolver,
+    JwtStrategy,
+    JwtRefreshStrategy,
+    JwtAuthGuard,
+    GqlAuthGuard,
+    RolesGuard,
+  ],
+  exports: [
+    AuthService,
+    JwtModule,
+    PassportModule,
+    JwtAuthGuard,
+    GqlAuthGuard,
+    RolesGuard,
+  ],
 })
 export class AuthModule {}

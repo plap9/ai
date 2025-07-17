@@ -1,3 +1,16 @@
+type TokenPair {
+  accessToken: String!
+  refreshToken: String!
+  expiresIn: Int!
+}
+
+type AuthResponse {
+  accessToken: String!
+  refreshToken: String!
+  expiresIn: Int!
+  user: User!
+}
+
 input RegisterInput {
   email: String!
   password: String!
@@ -9,16 +22,11 @@ input LoginInput {
   password: String!
 }
 
-type AuthResponse {
-  accessToken: String!
-  refreshToken: String!
-  expiresIn: Int!
-  user: User!
-}
-
 type Mutation {
   register(input: RegisterInput!): AuthResponse!
   login(input: LoginInput!): AuthResponse!
   refreshToken(refreshToken: String!): AuthResponse!
   logout: Boolean!
 }
+
+scalar DateTime

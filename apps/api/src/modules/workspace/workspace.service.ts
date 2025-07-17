@@ -57,7 +57,6 @@ export class WorkspaceService {
       });
 
       // Add owner as member
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       await this.databaseService.workspaceMember.create({
         data: {
           workspaceId: workspace.id,
@@ -191,7 +190,6 @@ export class WorkspaceService {
           userId: user.id,
         },
       });
-      /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
       if (existingMember) {
         throw new ConflictException(
@@ -200,7 +198,6 @@ export class WorkspaceService {
       }
 
       // Add member
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const member = await this.databaseService.workspaceMember.create({
         data: {
           workspaceId,
@@ -229,7 +226,6 @@ export class WorkspaceService {
         `User ${user.email} added to workspace ${workspaceId} as ${addMemberDto.role}`,
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       return this.formatMemberResponse(member);
     } catch (error) {
       this.logger.error(
@@ -253,7 +249,6 @@ export class WorkspaceService {
       ]);
 
       // Find member
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const member = await this.databaseService.workspaceMember.findFirst({
         where: {
           id: memberId,
@@ -266,13 +261,11 @@ export class WorkspaceService {
       }
 
       // Cannot remove owner
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (member.role === WorkspaceRole.OWNER) {
         throw new ForbiddenException('Cannot remove workspace owner');
       }
 
       // Remove member
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       await this.databaseService.workspaceMember.delete({
         where: { id: memberId },
       });
@@ -309,7 +302,6 @@ export class WorkspaceService {
       ]);
 
       // Find member
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const member = await this.databaseService.workspaceMember.findFirst({
         where: {
           id: memberId,
@@ -322,13 +314,11 @@ export class WorkspaceService {
       }
 
       // Cannot change owner role
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (member.role === WorkspaceRole.OWNER) {
         throw new ForbiddenException('Cannot change owner role');
       }
 
       // Update member role
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const updatedMember = await this.databaseService.workspaceMember.update({
         where: { id: memberId },
         data: { role: updateMemberRoleDto.role },
@@ -354,7 +344,6 @@ export class WorkspaceService {
         `Member ${memberId} role updated to ${updateMemberRoleDto.role} in workspace ${workspaceId}`,
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       return this.formatMemberResponse(updatedMember);
     } catch (error) {
       this.logger.error(
@@ -368,7 +357,6 @@ export class WorkspaceService {
   async switchWorkspace(userId: string, workspaceId: string): Promise<void> {
     try {
       // Check if user is member of the workspace
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const member = await this.databaseService.workspaceMember.findFirst({
         where: {
           workspaceId,
@@ -399,7 +387,6 @@ export class WorkspaceService {
     userId: string,
     allowedRoles: WorkspaceRole[],
   ): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const member = await this.databaseService.workspaceMember.findFirst({
       where: {
         workspaceId,
@@ -410,8 +397,6 @@ export class WorkspaceService {
     if (!member) {
       throw new ForbiddenException('User is not a member of this workspace');
     }
-
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
     if (!allowedRoles.includes(member.role)) {
       throw new ForbiddenException('Insufficient permissions');
     }
