@@ -1,18 +1,36 @@
 {
   "name": "@ai-assistant/utils",
   "version": "1.0.0",
-  "description": "",
+  "description": "Type-safe utilities and type guards for AI Assistant project",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc -w"
+    "dev": "tsc --watch",
+    "clean": "rimraf dist",
+    "typecheck": "tsc --noEmit"
   },
-  "keywords": [],
+  "keywords": [
+    "typescript",
+    "type-guards",
+    "validation",
+    "nestjs"
+  ],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.12.1",
-  "devDependencies": {
-    "typescript": "^5.8.3"
+  "dependencies": {
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "rxjs": "^7.8.0"
   },
-  "types": "dist/index.d.ts"
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "rimraf": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "rxjs": "^7.8.0"
+  }
 }

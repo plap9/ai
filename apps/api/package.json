@@ -20,6 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@ai-assistant/utils": "workspace:*",
     "@apollo/server": "^4.12.2",
     "@langchain/community": "^0.3.49",
     "@langchain/openai": "^0.6.1",
