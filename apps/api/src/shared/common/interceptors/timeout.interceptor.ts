@@ -4,14 +4,17 @@ import {
   ExecutionContext,
   CallHandler,
   RequestTimeoutException,
+  Inject,
 } from '@nestjs/common';
 import { Observable, timeout } from 'rxjs';
+
+export const TIMEOUT_TOKEN = 'TIMEOUT_TOKEN';
 
 @Injectable()
 export class TimeoutInterceptor implements NestInterceptor {
   private readonly timeoutMs: number;
 
-  constructor(timeoutMs: number = 30000) {
+  constructor(@Inject(TIMEOUT_TOKEN) timeoutMs: number = 30000) {
     this.timeoutMs = timeoutMs;
   }
 

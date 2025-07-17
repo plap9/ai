@@ -6,6 +6,7 @@ import {
   LoggingInterceptor,
   TransformInterceptor,
   TimeoutInterceptor,
+  TIMEOUT_TOKEN,
 } from './interceptors';
 
 @Module({
@@ -34,7 +35,19 @@ import {
       provide: APP_INTERCEPTOR,
       useClass: TimeoutInterceptor,
     },
+    // Provide timeout value
+    {
+      provide: TIMEOUT_TOKEN,
+      useValue: 30000, // 30 giây
+    },
+    // Thêm các provider để có thể export
+    ValidationPipe,
     ParseUUIDPipe,
+    HttpExceptionFilter,
+    AllExceptionsFilter,
+    LoggingInterceptor,
+    TransformInterceptor,
+    TimeoutInterceptor,
   ],
   exports: [
     ValidationPipe,
@@ -44,6 +57,7 @@ import {
     LoggingInterceptor,
     TransformInterceptor,
     TimeoutInterceptor,
+    TIMEOUT_TOKEN,
   ],
 })
 export class CommonModule {}

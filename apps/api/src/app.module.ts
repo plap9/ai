@@ -13,6 +13,8 @@ import { CommonModule } from './shared/common';
 import { UserModule } from './modules/user';
 import { AuthModule } from './modules/auth';
 import { WorkspaceModule } from './modules/workspace';
+import { AiModule } from './modules/ai/ai.module';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { WorkspaceModule } from './modules/workspace';
     UserModule,
     AuthModule,
     WorkspaceModule,
+    AiModule,
+    KnowledgeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
