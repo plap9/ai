@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_PIPE, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
-import { ValidationPipe, ParseUUIDPipe, SchemaValidationPipe } from './pipes';
+import { ValidationPipe, ParseUUIDPipe } from './pipes';
 import { HttpExceptionFilter, AllExceptionsFilter } from './filters';
 import {
   LoggingInterceptor,
@@ -67,7 +67,6 @@ import {
     // Export individual components for manual usage
     ValidationPipe,
     ParseUUIDPipe,
-    SchemaValidationPipe,
     HttpExceptionFilter,
     AllExceptionsFilter,
     LoggingInterceptor,
@@ -81,7 +80,6 @@ import {
     // Pipes
     ValidationPipe,
     ParseUUIDPipe,
-    SchemaValidationPipe,
 
     // Filters
     HttpExceptionFilter,

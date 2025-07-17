@@ -1,56 +1,83 @@
-import { createSchema } from '@ai-assistant/utils';
+import { createSchema, CommonSchemas, mergeSchemas } from '@ai-assistant/utils';
+import type { ValidationSchema } from '@ai-assistant/utils';
 
 /**
- * Schema cho user registration
+ * Schema for user login
  */
-export const registerSchema = createSchema({
-  email: {
-    required: true,
-    type: 'email' as const,
-    message: 'Valid email address is required',
-  },
-  password: {
-    required: true,
-    type: 'string' as const,
-    minLength: 8,
-    maxLength: 100,
-    message: 'Password must be 8-100 characters long',
-  },
-  name: {
-    required: true,
-    type: 'string' as const,
-    minLength: 2,
-    maxLength: 50,
-    message: 'Name must be 2-50 characters long',
-  },
-});
+export const loginSchema: ValidationSchema = CommonSchemas.userLogin;
 
 /**
- * Schema cho user login
+ * Schema for user registration
  */
-export const loginSchema = createSchema({
-  email: {
-    required: true,
-    type: 'email' as const,
-    message: 'Valid email address is required',
+export const registerSchema: ValidationSchema = mergeSchemas(
+  CommonSchemas.userLogin,
+  {
+    name: {
+      required: true,
+      type: 'string' as const,
+      minLength: 1,
+      maxLength: 100,
+      message: 'Name is required and must be 1-100 characters',
+    },
   },
-  password: {
-    required: true,
-    type: 'string' as const,
-    minLength: 1,
-    message: 'Password is required',
-  },
-});
+);
 
 /**
- * Schema cho refresh token request
+ * Schema for refresh token request
  */
-export const refreshTokenSchema = createSchema({
+export const refreshTokenSchema: ValidationSchema = createSchema({
   refreshToken: {
     required: true,
     type: 'string' as const,
-    minLength: 10,
-    message: 'Valid refresh token is required',
+    minLength: 1,
+    message: 'Refresh token is required',
+  },
+});
+
+/**
+ * Schema for password change
+ */
+export const changePasswordSchema: ValidationSchema = createSchema({
+  currentPassword: {
+    required: true,
+    type: 'string' as const,
+    minLength: 1,
+    message: 'Current password is required',
+  },
+  newPassword: {
+    required: true,
+    type: 'string' as const,
+    minLength: 8,
+    message: 'New password must be at least 8 characters',
+  },
+});
+
+/**
+ * Schema for forgot password request
+ */
+export const forgotPasswordSchema: ValidationSchema = createSchema({
+  email: {
+    required: true,
+    type: 'email' as const,
+    message: 'Valid email is required',
+  },
+});
+
+/**
+ * Schema for reset password
+ */
+export const resetPasswordSchema: ValidationSchema = createSchema({
+  token: {
+    required: true,
+    type: 'string' as const,
+    minLength: 1,
+    message: 'Reset token is required',
+  },
+  newPassword: {
+    required: true,
+    type: 'string' as const,
+    minLength: 8,
+    message: 'New password must be at least 8 characters',
   },
 });
 
@@ -61,4 +88,7 @@ export const authSchemas = {
   register: registerSchema,
   login: loginSchema,
   refreshToken: refreshTokenSchema,
+  changePassword: changePasswordSchema,
+  forgotPassword: forgotPasswordSchema,
+  resetPassword: resetPasswordSchema,
 } as const;

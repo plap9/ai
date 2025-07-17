@@ -18,6 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
+import { UserSchemas } from '../../shared/schemas';
 import {
   ValidatedBody,
   CurrentUser,
@@ -27,58 +28,6 @@ import {
   RequireRoles,
   AuthenticatedUser,
 } from '@ai-assistant/utils';
-import { createSchema } from '@ai-assistant/utils';
-
-/**
- * User validation schemas
- */
-const userSchemas = {
-  create: createSchema({
-    email: {
-      required: true,
-      type: 'email' as const,
-      message: 'Valid email address is required',
-    },
-    password: {
-      required: true,
-      type: 'string' as const,
-      minLength: 8,
-      maxLength: 100,
-      message: 'Password must be 8-100 characters long',
-    },
-    name: {
-      required: true,
-      type: 'string' as const,
-      minLength: 2,
-      maxLength: 50,
-      message: 'Name must be 2-50 characters long',
-    },
-    role: {
-      required: false,
-      type: 'string' as const,
-      message: 'Role must be a valid user role',
-    },
-  }),
-  update: createSchema({
-    email: {
-      required: false,
-      type: 'email' as const,
-      message: 'Valid email address is required',
-    },
-    name: {
-      required: false,
-      type: 'string' as const,
-      minLength: 2,
-      maxLength: 50,
-      message: 'Name must be 2-50 characters long',
-    },
-    role: {
-      required: false,
-      type: 'string' as const,
-      message: 'Role must be a valid user role',
-    },
-  }),
-};
 
 /**
  * Enhanced User Controller với comprehensive type safety
@@ -98,7 +47,7 @@ export class UserController {
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 409, description: 'User already exists' })
   async create(
-    @ValidatedBody(userSchemas.create) body: CreateUserDto,
+    @ValidatedBody(UserSchemas.create) body: CreateUserDto,
   ): Promise<UserResponseDto> {
     try {
       return await this.userService.create(body);
@@ -183,7 +132,7 @@ export class UserController {
   @ApiResponse({ status: 404, description: 'User not found' })
   async updateProfile(
     @CurrentUser() user: AuthenticatedUser,
-    @ValidatedBody(userSchemas.update) body: UpdateUserDto,
+    @ValidatedBody(UserSchemas.update) body: UpdateUserDto,
   ): Promise<UserResponseDto> {
     try {
       return await this.userService.update(user.id, body);
@@ -214,7 +163,7 @@ export class UserController {
   @ApiResponse({ status: 404, description: 'User not found' })
   async update(
     @UUIDParam('id') id: string,
-    @ValidatedBody(userSchemas.update) body: UpdateUserDto,
+    @ValidatedBody(UserSchemas.update) body: UpdateUserDto,
   ): Promise<UserResponseDto> {
     try {
       return await this.userService.update(id, body);

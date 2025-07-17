@@ -25,6 +25,7 @@ import {
   UpdateMemberRoleDto,
   WorkspaceMemberResponseDto,
 } from './dto';
+import { WorkspaceSchemas } from '../../shared/schemas';
 import {
   ValidatedBody,
   CurrentUser,
@@ -34,47 +35,6 @@ import {
   RequireWorkspaceRole,
   AuthenticatedUser,
 } from '@ai-assistant/utils';
-import { createSchema } from '@ai-assistant/utils';
-
-/**
- * Workspace validation schemas
- */
-const workspaceSchemas = {
-  create: createSchema({
-    name: {
-      required: true,
-      type: 'string' as const,
-      minLength: 2,
-      maxLength: 100,
-      message: 'Workspace name must be 2-100 characters long',
-    },
-    description: {
-      required: false,
-      type: 'string' as const,
-      maxLength: 500,
-      message: 'Description must be at most 500 characters',
-    },
-  }),
-  addMember: createSchema({
-    email: {
-      required: true,
-      type: 'email' as const,
-      message: 'Valid email address is required',
-    },
-    role: {
-      required: true,
-      type: 'string' as const,
-      message: 'Valid workspace role is required',
-    },
-  }),
-  updateMemberRole: createSchema({
-    role: {
-      required: true,
-      type: 'string' as const,
-      message: 'Valid workspace role is required',
-    },
-  }),
-};
 
 /**
  * Enhanced Workspace Controller với comprehensive type safety và workspace permissions
@@ -96,7 +56,7 @@ export class WorkspaceController {
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 401, description: 'Authentication required' })
   async create(
-    @ValidatedBody(workspaceSchemas.create) body: CreateWorkspaceDto,
+    @ValidatedBody(WorkspaceSchemas.create) body: CreateWorkspaceDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<WorkspaceResponseDto> {
     try {
@@ -178,7 +138,7 @@ export class WorkspaceController {
   @ApiResponse({ status: 409, description: 'User already a member' })
   async addMember(
     @UUIDParam('id') workspaceId: string,
-    @ValidatedBody(workspaceSchemas.addMember) body: AddMemberDto,
+    @ValidatedBody(WorkspaceSchemas.addMember) body: AddMemberDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<WorkspaceMemberResponseDto> {
     try {
@@ -241,7 +201,7 @@ export class WorkspaceController {
   async updateMemberRole(
     @UUIDParam('id') workspaceId: string,
     @UUIDParam('memberId') memberId: string,
-    @ValidatedBody(workspaceSchemas.updateMemberRole) body: UpdateMemberRoleDto,
+    @ValidatedBody(WorkspaceSchemas.updateMemberRole) body: UpdateMemberRoleDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<WorkspaceMemberResponseDto> {
     try {
@@ -333,7 +293,7 @@ export class WorkspaceController {
   @ApiResponse({ status: 404, description: 'Workspace not found' })
   update(
     @UUIDParam('id') workspaceId: string,
-    @ValidatedBody(workspaceSchemas.create) body: Partial<CreateWorkspaceDto>,
+    @ValidatedBody(WorkspaceSchemas.update) body: Partial<CreateWorkspaceDto>,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<WorkspaceResponseDto> {
     // TODO: Implement workspace update in WorkspaceService
