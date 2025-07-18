@@ -1,3 +1,4 @@
+// TODO: [Open Issue] Complete the implementation of validation pipes as indicated by the placeholder comments.
 // Validation pipes sẽ được implement ở đây
 // Waiting for user to provide the implementation
 

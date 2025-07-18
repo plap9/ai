@@ -148,3 +148,23 @@ NODE_ENV=development
 3. Commit thay đổi (`git commit -m 'Add some AmazingFeature'`)
 4. Push lên branch (`git push origin feature/AmazingFeature`)
 5. Tạo Pull Request
+
+## 🐞 Open Issues
+
+### 1. Incomplete Implementation in `types/index.ts`
+- **File:** `packages/utils/src/types/index.ts`
+- **Problem:** The file contains placeholder comments such as `// Common type definitions sẽ được implement ở đây` and `// Waiting for user to provide the implementation`. This indicates that some common type definitions are missing and need to be implemented.
+- **Impact:** Missing type definitions can lead to type errors or lack of type safety in other parts of the codebase.
+- **Suggested Fix:** Implement the required common type definitions as indicated by the comments.
+
+### 2. Incomplete Implementation in `pipes.ts`
+- **File:** `packages/utils/src/nestjs/pipes.ts`
+- **Problem:** The file starts with comments: `// Validation pipes sẽ được implement ở đây` and `// Waiting for user to provide the implementation`. While some pipes are implemented, the comments suggest that additional validation pipes or logic are expected but not yet provided.
+- **Impact:** Missing validation pipes may result in incomplete input validation and potential runtime errors.
+- **Suggested Fix:** Review the requirements for validation pipes and implement any missing ones as indicated by the comments.
+
+### 3. No Error Handling for Undefined `validateObject` Return in `validation.ts`
+- **File:** `packages/utils/src/validation.ts`
+- **Problem:** In the function `validateAndParse`, the code assumes that `validateObject(data, schema)` always returns an object with `valid` and `errors` properties. If `validateObject` returns `undefined` or an unexpected value, this could cause runtime errors.
+- **Impact:** Potential for runtime exceptions if `validateObject` does not return the expected structure.
+- **Suggested Fix:** Add a check to ensure `validation` is defined and has the expected properties before accessing them.
