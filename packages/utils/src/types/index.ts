@@ -1,3 +1,4 @@
+// TODO: [Open Issue] Implement missing common type definitions as indicated by the placeholder comments.
 // Common type definitions sẽ được implement ở đây
 // Waiting for user to provide the implementation
 
